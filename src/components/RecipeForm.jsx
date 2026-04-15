@@ -114,8 +114,15 @@ export default function RecipeForm({ existing, onSave, onCancel }) {
       if (line.includes('\t')) {
         const parts = line.split('\t').map(p => p.trim()).filter(Boolean);
         if (parts.length >= 2) {
-          const name = parts[0];
-          const amountRaw = parts[1];
+          // どちらの列が数量かを判定（数字で始まる方が数量）
+          const p0isNum = /^[\d.\/]/.test(parts[0]);
+          const p1isNum = /^[\d.\/]/.test(parts[1]);
+          let name, amountRaw;
+          if (p0isNum && !p1isNum) {
+            name = parts[1]; amountRaw = parts[0];
+          } else {
+            name = parts[0]; amountRaw = parts[1];
+          }
           const amMatch = amountRaw.match(/([\d.\/]+)\s*(.*)/);
           ingredients.push({ name, amount: amMatch ? amMatch[1] : amountRaw, unit: amMatch ? amMatch[2].trim() : '' });
         } else if (parts.length === 1) {
