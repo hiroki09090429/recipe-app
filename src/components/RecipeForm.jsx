@@ -107,31 +107,33 @@ export default function RecipeForm({ existing, onSave, onCancel }) {
   const handleOcrResult = (text) => {
     setShowOcr(false);
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    const names = [];
-    const amounts = [];
+    const ingredients = [];
 
     for (const line of lines) {
-      const parts = line.includes('\t')
-        ? line.split('\t').map(p => p.trim()).filter(Boolean)
-        : [line];
-      for (const part of parts) {
-        const amMatch = part.match(/^([\d.\/]+)\s*(.*)/);
-        if (amMatch) {
-          amounts.push({ amount: amMatch[1], unit: amMatch[2].trim() });
-        } else if (part) {
-          names.push(part);
+      // タブ区切り: 「材料名\t数量」
+      if (line.includes('\t')) {
+        const parts = line.split('\t').map(p => p.trim()).filter(Boolean);
+        if (parts.length >= 2) {
+          const p0isNum = /^[\d.\/]/.test(parts[0]);
+          const p1isNum = /^[\d.\/]/.test(parts[1]);
+          let name, amountRaw;
+          if (p0isNum && !p1isNum) {
+            name = parts[1]; amountRaw = parts[0];
+          } else {
+            name = parts[0]; amountRaw = parts[1];
+          }
+          const amMatch = amountRaw.match(/([\d.\/]+)\s*(.*)/);
+          ingredients.push({ name, amount: amMatch ? amMatch[1] : amountRaw, unit: amMatch ? amMatch[2].trim() : '' });
+        } else if (parts.length === 1) {
+          ingredients.push({ name: parts[0], amount: '', unit: '' });
         }
+        continue;
       }
-    }
-
-    const ingredients = [];
-    const len = Math.max(names.length, amounts.length);
-    for (let i = 0; i < len; i++) {
-      ingredients.push({
-        name: names[i] || '',
-        amount: amounts[i]?.amount || '',
-        unit: amounts[i]?.unit || '',
-      });
+      // スペース区切り: 「材料名 数量単位」
+      const m = line.match(/^(.+?)\s+([\d.\/]+)\s*([^\d\s]*)$/);
+      if (m && m[1].length > 0) {
+        ingredients.push({ name: m[1], amount: m[2], unit: m[3] || '' });
+      }
     }
 
     if (ingredients.length > 0) {
