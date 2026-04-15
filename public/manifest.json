@@ -1,0 +1,25 @@
+{
+  "name": "お菓子レシピ帳",
+  "short_name": "レシピ帳",
+  "description": "あなたの大切なお菓子レシピを管理するアプリ",
+  "start_url": "/recipe-app/",
+  "display": "standalone",
+  "background_color": "#fdf6f0",
+  "theme_color": "#e8847a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["food", "lifestyle", "utilities"]
+}
