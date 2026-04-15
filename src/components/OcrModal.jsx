@@ -1,44 +1,20 @@
 import { useState, useRef } from 'react';
 
-const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
+const WORKER_URL = 'https://recipe-app-ocr-proxy.hiroki09090429.workers.dev';
 
 async function runClaudeOcr(imageDataUrl) {
-  const [meta, base64] = imageDataUrl.split(',');
-  const mediaType = meta.match(/:(.*?);/)?.[1] || 'image/jpeg';
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch(WORKER_URL, {
     method: 'POST',
-    headers: {
-      'x-api-key': API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5',
-      max_tokens: 1024,
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: mediaType, data: base64 },
-          },
-          {
-            type: 'text',
-            text: 'この画像に写っているレシピの材料・分量・手順をすべてそのままテキストに書き起こしてください。表形式の場合は「材料名 数量 単位」の形式で1行ずつ出力してください。余計な説明は不要です。',
-          },
-        ],
-      }],
-    }),
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ imageDataUrl }),
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `API error ${res.status}`);
+    throw new Error(err?.error || `API error ${res.status}`);
   }
   const data = await res.json();
-  return data.content?.[0]?.text || '';
+  return data.text || '';
 }
 
 export default function OcrModal({ onResult, onClose }) {
