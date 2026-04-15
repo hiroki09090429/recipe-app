@@ -107,32 +107,69 @@ export default function RecipeForm({ existing, onSave, onCancel }) {
   const handleOcrResult = (text) => {
     setShowOcr(false);
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    const ingredients = [];
+    let ingredients = [];
 
-    for (const line of lines) {
-      // タブ区切り: 「材料名\t数量」
-      if (line.includes('\t')) {
-        const parts = line.split('\t').map(p => p.trim()).filter(Boolean);
-        if (parts.length >= 2) {
-          const p0isNum = /^[\d.\/]/.test(parts[0]);
-          const p1isNum = /^[\d.\/]/.test(parts[1]);
-          let name, amountRaw;
-          if (p0isNum && !p1isNum) {
-            name = parts[1]; amountRaw = parts[0];
-          } else {
-            name = parts[0]; amountRaw = parts[1];
-          }
-          const amMatch = amountRaw.match(/([\d.\/]+)\s*(.*)/);
-          ingredients.push({ name, amount: amMatch ? amMatch[1] : amountRaw, unit: amMatch ? amMatch[2].trim() : '' });
-        } else if (parts.length === 1) {
-          ingredients.push({ name: parts[0], amount: '', unit: '' });
+    // 各行を分類: 数値のみ / テキストのみ / 混合
+    const isNumLine = (l) => /^[\d.\/]+\s*[^\d\s]*$/.test(l);
+    const isTextLine = (l) => !/\d/.test(l);
+
+    const numLines = lines.filter(isNumLine);
+    const textLines = lines.filter(isTextLine);
+
+    // 列ごとパターン検出: テキスト行と数値行が同数で、交互でない場合
+    if (textLines.length > 0 && numLines.length > 0
+        && textLines.length === numLines.length
+        && ingredients.length === 0) {
+      // テキスト行と数値行の位置を確認
+      const firstTextIdx = lines.indexOf(textLines[0]);
+      const firstNumIdx = lines.indexOf(numLines[0]);
+      const lastTextIdx = lines.lastIndexOf(textLines[textLines.length - 1]);
+      const lastNumIdx = lines.lastIndexOf(numLines[numLines.length - 1]);
+
+      // テキストが先に並び、その後数値が並ぶ（列ごと出力）
+      const isColumnFormat = (lastTextIdx < firstNumIdx) || (lastNumIdx < firstTextIdx);
+
+      if (isColumnFormat) {
+        const names = lastTextIdx < firstNumIdx ? textLines : numLines;
+        const amounts = lastTextIdx < firstNumIdx ? numLines : textLines;
+        for (let i = 0; i < names.length; i++) {
+          const amMatch = amounts[i].match(/([\d.\/]+)\s*(.*)/);
+          ingredients.push({
+            name: names[i],
+            amount: amMatch ? amMatch[1] : amounts[i],
+            unit: amMatch ? amMatch[2].trim() : '',
+          });
         }
-        continue;
       }
-      // スペース区切り: 「材料名 数量単位」
-      const m = line.match(/^(.+?)\s+([\d.\/]+)\s*([^\d\s]*)$/);
-      if (m && m[1].length > 0) {
-        ingredients.push({ name: m[1], amount: m[2], unit: m[3] || '' });
+    }
+
+    // 列ごとで処理できなかった場合、行ごとにパース
+    if (ingredients.length === 0) {
+      for (const line of lines) {
+        // タブ区切り: 「材料名\t数量」
+        if (line.includes('\t')) {
+          const parts = line.split('\t').map(p => p.trim()).filter(Boolean);
+          if (parts.length >= 2) {
+            const p0isNum = /^[\d.\/]/.test(parts[0]);
+            const p1isNum = /^[\d.\/]/.test(parts[1]);
+            let name, amountRaw;
+            if (p0isNum && !p1isNum) {
+              name = parts[1]; amountRaw = parts[0];
+            } else {
+              name = parts[0]; amountRaw = parts[1];
+            }
+            const amMatch = amountRaw.match(/([\d.\/]+)\s*(.*)/);
+            ingredients.push({ name, amount: amMatch ? amMatch[1] : amountRaw, unit: amMatch ? amMatch[2].trim() : '' });
+          } else if (parts.length === 1) {
+            ingredients.push({ name: parts[0], amount: '', unit: '' });
+          }
+          continue;
+        }
+        // スペース区切り: 「材料名 数量単位」
+        const m = line.match(/^(.+?)\s+([\d.\/]+)\s*([^\d\s]*)$/);
+        if (m && m[1].length > 0) {
+          ingredients.push({ name: m[1], amount: m[2], unit: m[3] || '' });
+        }
       }
     }
 
