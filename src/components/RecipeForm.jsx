@@ -106,21 +106,33 @@ export default function RecipeForm({ existing, onSave, onCancel }) {
 
   const handleOcrResult = (text) => {
     setShowOcr(false);
-    // Try to parse OCR text into form fields
-    // Simple heuristic: lines with 数字 + unit → ingredients, others → steps/notes
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
     const ingredients = [];
-    const steps = [];
+
     for (const line of lines) {
-      const m = line.match(/^(.+?)\s+([\d.\/]+)\s*([a-zA-Zg㎖mlmlLgkg個枚枚枚本本本本本本枚個個匙杯カップ少々適量]+)?$/);
-      if (m) {
+      // タブ区切り: 「材料名\t数量」
+      if (line.includes('\t')) {
+        const parts = line.split('\t').map(p => p.trim()).filter(Boolean);
+        if (parts.length >= 2) {
+          const name = parts[0];
+          const amountRaw = parts[1];
+          const amMatch = amountRaw.match(/([\d.\/]+)\s*(.*)/);
+          ingredients.push({ name, amount: amMatch ? amMatch[1] : amountRaw, unit: amMatch ? amMatch[2].trim() : '' });
+        } else if (parts.length === 1) {
+          ingredients.push({ name: parts[0], amount: '', unit: '' });
+        }
+        continue;
+      }
+      // スペース区切り: 「材料名 数量単位」
+      const m = line.match(/^(.+?)\s+([\d.\/]+)\s*([^\d\s]*)$/);
+      if (m && m[1].length > 0) {
         ingredients.push({ name: m[1], amount: m[2], unit: m[3] || '' });
-      } else {
-        steps.push(line);
       }
     }
-    if (ingredients.length > 0) setForm(f => ({ ...f, ingredients: ingredients.length ? ingredients : f.ingredients }));
-    if (steps.length > 0) setForm(f => ({ ...f, steps: steps.length ? steps : f.steps, notes: f.notes }));
+
+    if (ingredients.length > 0) {
+      setForm(f => ({ ...f, ingredients }));
+    }
   };
 
   const handleSubmit = async (e) => {
